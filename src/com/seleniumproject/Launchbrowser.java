@@ -100,6 +100,8 @@ public class Launchbrowser {
 				System.out.print(" | "+webElement.getText());
 			}
 
+			
+			
 			driver.close();
 			 return ;
 		}else if(alreadyAdded && state.equalsIgnoreCase("GUARDADO")) {
