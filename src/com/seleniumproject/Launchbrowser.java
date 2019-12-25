@@ -7,7 +7,6 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.security.NoSuchAlgorithmException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -30,36 +29,48 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.firefox.FirefoxBinary;
+import org.openqa.selenium.firefox.FirefoxDriver;
+import org.openqa.selenium.firefox.FirefoxOptions;
+import org.openqa.selenium.htmlunit.HtmlUnitDriver;
+import org.openqa.selenium.remote.BrowserType;
+import org.openqa.selenium.support.ui.ExpectedCondition;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
+import org.openqa.selenium.support.ui.WebDriverWait;
+
+import com.gargoylesoftware.htmlunit.BrowserVersion;
 
 public class Launchbrowser {
 
-	
-	public static WebDriver driver  = null;
+	private final static boolean isWindows  =System.getProperty("os.name").contains("Windows");
+	private final static  String CHROMEDRIVER = isWindows ?  "chromedriver.exe" :"geckodriver"; 
+	public static WebDriver driver  = driverCreator();
+	private static WebDriverWait wait = new WebDriverWait(driver, 30);
 	static boolean ferias = false;
 	static boolean compensaçao = false;
 	protected static Set<String> compensaSet;
 	protected static Set<String> feriasSet;
 	public static void main(String[] args) throws InterruptedException, IOException, URISyntaxException {
-		
-		
+		//final String CHROMEDRIVER = isWindows ?  "chromedriver.exe" :"geckodriver"; 
+		System.out.println(System.getProperty("os.name"));
 		Scanner sc = new Scanner(System.in);
 		Calendar today = Calendar.getInstance();
 		int yearInt = today.get(Calendar.YEAR);
-		SimpleDateFormat formatMes = new SimpleDateFormat("MMMM");
+		SimpleDateFormat formatMes = new SimpleDateFormat("MMMM"); 
 		String mes = formatMes.format(today.getTime());
 
-		if(	!(new File(".\\driver\\chromedriver.exe").exists())) {
+		if(	!(new File("."+File.separator+"driver"+File.separator+CHROMEDRIVER).exists())) {
+			System.out.println("chromedriver dont exist");
 			configDriver();
+			
 		}
-
-
-		System.setProperty("webdriver.chrome.driver", ".\\driver\\chromedriver.exe");
-
+		
+		
 		menu(sc);
-
-		driver = new ChromeDriver();
-		driver.manage().timeouts().implicitlyWait(30, TimeUnit.SECONDS);
+		
+		
+		driver.manage().timeouts().implicitlyWait(40, TimeUnit.SECONDS);
 		driver.navigate().to("https://rm.aubay.pt");
 		driver.manage().window().maximize();
 
@@ -87,7 +98,7 @@ public class Launchbrowser {
 		//System.out.println(container.getText());
 		boolean alreadyAdded = container.getText().trim().equalsIgnoreCase(mes);
 		
-		System.out.println(alreadyAdded ? "Já tem uma folha para este Mes "+mes : "Criada nova folha "+mes );
+		System.out.println(alreadyAdded ? "Já tem uma folha para este Mes "+mes : "Criada nova folha " +mes );
 		
 		String state =driver.findElement(By.xpath("//*[@id=\"container\"]/div[5]/div/form/div[2]/div/table/tbody/tr[1]/td[5]")).getText().trim();
 		
@@ -110,10 +121,11 @@ public class Launchbrowser {
 			System.out.println(" Já Guardado \n");
 			for (WebElement webElement : list) {
 
-				System.out.print(" | "+webElement.getText());
+				System.out.print(" | "+webElement.getText()) ;
 			}
 			boolean menuGuardado =  false;
 			do {
+				System.out.println("\n");
 				System.out.println("1) Update ");
 				System.out.println("2) Submeter ");
 				System.out.println("3) Sair ");
@@ -158,6 +170,9 @@ public class Launchbrowser {
 			month.selectByValue(Integer.toString(today.get(Calendar.MONTH)+1));
 
 			driver.findElement(By.cssSelector("#container > div.container.body-content > div > form > div.form-data-container > div.divBottomButtons > a")).click();
+			
+			Thread.sleep(10000);
+			driver.findElement(By.cssSelector("#container > div.container.body-content > div > form > div.grid-mvc > div > table > tbody > tr:nth-child(1) > td.grid-cell.hidden-xs > b > a > img")).click();
 
 		}else {
 			driver.findElement(By.cssSelector("#container > div.container.body-content > div > form > div.grid-mvc > div > table > tbody > tr:nth-child(1) > td.grid-cell.hidden-xs > b > a > img")).click();
@@ -178,7 +193,7 @@ public class Launchbrowser {
 			//System.out.println(webElement.findElement(By.id("Day_Day")).getAttribute("value"));
 
 			WebElement parent = webElement.findElement(By.xpath("../.."));
-
+			webElement.clear();
 			String day =parent.findElement(By.id("Day_Day")).getAttribute("value");
 			if ( 
 					!( (feriasSet!=null &&feriasSet.contains(day))|| (compensaSet!=null && compensaSet.contains(day) ) ) ) {
@@ -197,14 +212,14 @@ public class Launchbrowser {
 
 		if (ferias) {
 
-			driver.findElement(By.id("load-partial")).click();
+			wait(driver.findElement(By.id("load-partial"))).click();
 
-			//driver.manage().timeouts().implicitlyWait(30, TimeUnit.SECONDS);
+			driver.manage().timeouts().implicitlyWait(60, TimeUnit.SECONDS);
 			System.out.println("\n loading");
-			Thread.sleep(10000);
+			
 			WebElement feriasWeb = null;
 			List<WebElement> feriasTable = driver.findElements(By.cssSelector(".timesheetNonBillableRow #ActivityDescription"));
-
+			//wait.until(ExpectedConditions.visibilityOfAllElements(feriasTable));
 			for (WebElement webElement : feriasTable) {
 
 				//					
@@ -305,13 +320,13 @@ public class Launchbrowser {
 			obser.sendKeys(observations);
 		}
 
-
-		takesScreenshot(today);
+//		if(isWindows)
+//			takesScreenshot(today);
 
 		try
 		{
 			sc.reset();
-			System.out.println("save ?");
+			System.out.println("\n save ?");
 
 			boolean endMenu = false;
 			do {
@@ -322,21 +337,24 @@ public class Launchbrowser {
 
 				switch (sub.trim()) {
 				case "1":
-					WebElement submit = driver.findElement(By.cssSelector("#submitTimesheetForm"));
+					WebElement submit = driver.findElement(By.cssSelector(".submitTimesheetForm"));
 					submit.click();
 					System.out.println("Submetido");
 					endMenu = true;
 					break;
 
 				case "2":
-					WebElement save = driver.findElement(By.cssSelector("#saveTimesheetForm"));
-					save.click();
+					WebElement save = driver.findElement(By.xpath("//*[@id=\"saveTimesheetForm\"]"));
+					
+					WebElement savebtn = wait(save);
+					savebtn.click();
 					System.out.println("Guardado");
 					endMenu = true;
 					break;
 
 				case "3":
 					driver.close();
+					driver.quit();
 					return;
 					
 				default :
@@ -352,21 +370,57 @@ public class Launchbrowser {
 		}finally {
 			sc.close();
 		}
-		Thread.sleep(20000);
+		//Thread.sleep(30000);
 		driver.close();
 
 	}
 
 
-	private static void configDriver() throws IOException, URISyntaxException {
+	private static WebElement wait(WebElement save) throws InterruptedException {
+		
+		//wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//*[@id=\"saveTimesheetForm\"]")));
+		WebElement savebtn = wait.until(ExpectedConditions.elementToBeClickable(save));
+	//	driver.manage().timeouts().wait(30);
+		return savebtn;
+	}
+
+
+	private static WebDriver driverCreator() {
+
+		String dir	=Launchbrowser.class.getProtectionDomain().getCodeSource().getLocation().getFile();
+		String dirParent = new File(dir).getParent();
+		
+		
+		if(isWindows) {
+			System.setProperty("webdriver.chrome.driver", dirParent+File.separator+"driver"+File.separator+CHROMEDRIVER);
+			return  new ChromeDriver();
+					
+					//new HtmlUnitDriver(BrowserVersion.INTERNET_EXPLORER,false);
+		}else {
+//			 FirefoxBinary firefoxBinary = new FirefoxBinary();
+//			 firefoxBinary.addCommandLineOptions("--headless");
+//			 firefoxBinary.addCommandLineOptions("--no-sandbox");
+//			 System.setProperty("webdriver.gecko.driver",  dirParent+File.separator+"driver"+File.separator+CHROMEDRIVER);
+//			 FirefoxOptions firefoxOptions = new FirefoxOptions();
+//			 firefoxOptions.setBinary(firefoxBinary);
+			System.out.println("Chrome");
+			 return new HtmlUnitDriver(BrowserVersion.CHROME);
+
+		}
+		
+		
+	}
+
+
+	private static void configDriver() throws IOException{
 		InputStream imput = Launchbrowser.class.getResourceAsStream("/chromedriver.exe");
 	
 		String dirTxt = Launchbrowser.class.getProtectionDomain().getCodeSource().getLocation().getFile();
 
 	
 		String dirTxtPar =  new File(dirTxt).getParent();
-		new File(dirTxtPar+"\\driver").mkdirs();
-		Files.copy( imput, Paths.get(dirTxtPar+"\\driver\\chromedriver.exe"),StandardCopyOption.REPLACE_EXISTING);
+		new File(dirTxtPar+ File.separator +   "driver").mkdirs();
+		Files.copy( imput, Paths.get(dirTxtPar+File.separator+"driver" +File.separator+CHROMEDRIVER),StandardCopyOption.REPLACE_EXISTING);
 		System.out.println("driver Criado");
 	}
 
@@ -374,7 +428,7 @@ public class Launchbrowser {
 	private static void takesScreenshot(Calendar today) throws WebDriverException, IOException, URISyntaxException {
 		TakesScreenshot scre = (TakesScreenshot) driver;
 		SimpleDateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy hh_mm");
-		System.out.println("taking sCreenshot");
+		System.out.println("\n taking sCreenshot");
 		File image = scre.getScreenshotAs(OutputType.FILE);
 		String dir2 = Launchbrowser.class.getProtectionDomain().getCodeSource().getLocation()
 				.toURI().getPath();
